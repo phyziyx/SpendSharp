@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel;
+using System.ComponentModel.DataAnnotations;
 
 namespace SpendSharp.Models
 {
@@ -9,5 +10,7 @@ namespace SpendSharp.Models
 
         [Required]
         public string? Description { get; set; } = string.Empty;
+
+        // public DateTime createdAt { get; set; } = DateTime.Now;
     }
 }

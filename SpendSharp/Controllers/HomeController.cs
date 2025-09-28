@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using System.Diagnostics;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
@@ -11,6 +12,14 @@ namespace SpendSharp.Controllers
         private readonly ILogger<HomeController> _logger;
         private readonly SpendSharpDbContext _context;
 
+        private readonly int[] _validPageSizes =
+        {
+            5,
+            10,
+            25,
+            50
+        };
+
         public HomeController(ILogger<HomeController> logger, SpendSharpDbContext context)
         {
             _logger = logger;
@@ -22,12 +31,40 @@ namespace SpendSharp.Controllers
             return View();
         }
 
-        public IActionResult Expenses()
+        public IActionResult Expenses(
+            [FromQuery] int page,
+            [FromQuery] int pageSize,
+            [FromQuery][AllowedValues(new[] { "ASC", "DESC" }, "Invalid orderBy value provided")] string orderBy
+        )
         {
-            var allExpenses = _context.Expenses.ToList();
-            var totalExpenses = allExpenses.Sum(e => e.Value);
+            if (page == 0)
+            {
+                page = 1;
+            }
 
-            ViewBag.TotalExpenses = totalExpenses;
+            if (!_validPageSizes.Contains(pageSize))
+            {
+                pageSize = _validPageSizes[0];
+            }
+
+            var query = _context.Expenses.AsQueryable();
+
+            if (orderBy == "DESC")
+            {
+                query = query.OrderByDescending(e => e.Id);
+            }
+            else
+            {
+                query = query.OrderBy(e => e.Id);
+            }
+
+            var allExpenses = query.Skip((page - 1) * pageSize).Take(pageSize).ToList();
+
+            ViewBag.Page = page;
+            ViewBag.PageSize = pageSize;
+            ViewBag.TotalCount = _context.Expenses.Count();
+            ViewBag.TotalPages = (int)Math.Ceiling((double)ViewBag.TotalCount / pageSize);
+            ViewBag.PageSizes = _validPageSizes;
 
             return View(allExpenses);
         }
