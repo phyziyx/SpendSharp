@@ -1,0 +1,56 @@
+﻿@model PaginationViewModel
+
+<div class="d-flex justify-content-between align-items-center align-content-center align-self-center">
+    <div class="d-flex justify-content-between gap-2">
+        @if (Model.Page > 1)
+        {
+            <a asp-controller="Home" asp-action="Expenses" asp-route-page="@(Model.Page - 1)" asp-route-pageSize="@(Model.PageSize)" class="btn btn-primary">Previous</a>
+        }
+        else
+        {
+            <span class="btn btn-secondary disabled">Previous</span>
+        }
+
+        @for (int i = Math.Max(1, Model.Page - 5), j = Math.Min(Model.TotalPages, i + 5); i <= j; i++)
+        {
+            if (i == Model.Page)
+            {
+                <span class="btn btn-secondary disabled">@i</span>
+            }
+            else
+            {
+                <a asp-controller="Home" asp-action="Expenses" asp-route-page="@i" asp-route-pageSize="@(Model.PageSize)" class="btn btn-primary">@i</a>
+            }
+        }
+
+        @if (Model.Page < Model.TotalPages)
+        {
+            <a asp-controller="Home" asp-action="Expenses" asp-route-page="@(Model.Page + 1)" asp-route-pageSize="@(Model.PageSize)" class="btn btn-primary">Next</a>
+        }
+        else
+        {
+            <span class="btn btn-secondary disabled">Next</span>
+        }
+    </div>
+
+    <form method="get" asp-controller="Home" asp-action="Expenses" class="d-inline">
+        @{
+            /* Whenever the user changes the pageSize, we need to send them back to page 1 */
+        }
+        <input type="hidden" name="page" value="1" />
+        <select name="pageSize" class="form-select" aria-label="Page size" onchange="this.form.submit()">
+            @foreach (int pageSize in Model.PageSizes)
+            {
+                // It is illegal to have C# in the options, so we'll use an if-else statement instead.
+                if (pageSize == Model.PageSize)
+                {
+                    <option value="@pageSize" selected>@pageSize</option>
+                }
+                else
+                {
+                    <option value="@pageSize">@pageSize</option>
+                }
+            }
+        </select>
+    </form>
+</div>
