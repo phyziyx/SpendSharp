@@ -1,0 +1,26 @@
+﻿@{
+	ViewData["Title"] = "Bulk Add Expenses";
+}
+
+@model SpendSharp.Models.Expense;
+
+<div class="text-center">
+	<h1 class="display-4">Bulk Create Expenses</h1>
+	<p>Choose an Excel (XLS, XLSX) file and upload to add expenses in bulk</p>
+</div>
+
+<form asp-controller="Home" asp-action="BulkCreateForm" method="post" enctype="multipart/form-data">
+	<input required
+		   class="form-control"
+		   name="file"
+		   type="file" />
+
+	<button type="submit" class="mt-4 btn btn-success">Upload</button>
+</form>
+
+@{
+	if (@ViewBag.Message != null)
+	{
+		<p class="fw-bold">@ViewBag.Message</p>
+	}
+}

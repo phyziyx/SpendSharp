@@ -5,7 +5,7 @@
 namespace SpendSharp.Migrations
 {
     /// <inheritdoc />
-    public partial class genesis : Migration
+    public partial class Genesis : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)

@@ -10,8 +10,8 @@ using SpendSharp.Data;
 namespace SpendSharp.Migrations
 {
     [DbContext(typeof(SpendSharpDbContext))]
-    [Migration("20250921173445_genesis")]
-    partial class genesis
+    [Migration("20250921173445_Genesis")]
+    partial class Genesis
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)

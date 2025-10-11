@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.Diagnostics;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using SpendSharp.Data;
@@ -63,7 +64,7 @@ namespace SpendSharp.Controllers
             ViewBag.Page = page;
             ViewBag.PageSize = pageSize;
             ViewBag.TotalCount = _context.Expenses.Count();
-            ViewBag.TotalPages = (int)Math.Ceiling((double)ViewBag.TotalCount / pageSize);
+            ViewBag.TotalPages = (int) Math.Ceiling((double) ViewBag.TotalCount / pageSize);
             ViewBag.PageSizes = _validPageSizes;
 
             return View(allExpenses);
@@ -83,6 +84,122 @@ namespace SpendSharp.Controllers
             return View();
         }
 
+        public IActionResult BulkCreate()
+        {
+            return View();
+        }
+
+        [HttpPost]
+        public IActionResult BulkCreateForm(IFormFile file)
+        {
+            if (file == null || file.Length == 0)
+            {
+                ViewBag.Message = "Invalid file provided.";
+                return View();
+            }
+
+            const int FILE_SIZE_LENGTH = 5 * 1024 * 1024;
+
+            if (file.Length > FILE_SIZE_LENGTH)
+            {
+                ViewBag.Message = $"Provided file is too large. Limit is {FILE_SIZE_LENGTH / 1024 / 1024} MB";
+                return View();
+            }
+
+            string[] fileNameParts = file.FileName.Split(".");
+            string[] validFileExtensions = { "xlsx", "xls" };
+
+            if (fileNameParts.Length < 1 || !validFileExtensions.Contains(fileNameParts[fileNameParts.Length - 1].ToLower()))
+            {
+                ViewBag.Message = "Provided file has an invalid extension, and must be XLS or XLSX file.";
+                return View();
+            }
+
+            var uploadPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads");
+
+            if (!Directory.Exists(uploadPath))
+                Directory.CreateDirectory(uploadPath);
+
+            var filePath = Path.Combine(uploadPath, Path.GetFileName(file.FileName));
+
+            using (var stream = new FileStream(filePath, FileMode.Create))
+            {
+                file.CopyTo(stream);
+            }
+
+            string[] columns = { "Description", "Value" };
+
+            int failedRows = 0, successfulRows = 0;
+            using (var workbook = new ClosedXML.Excel.XLWorkbook(filePath))
+            {
+                var worksheet = workbook.Worksheets.First();
+
+                var firstRowUsed = worksheet.FirstRowUsed();
+                if (firstRowUsed == null)
+                {
+                    ViewBag.Message = "Provided file is empty or invalid.";
+                    return View("BulkCreate");
+                }
+
+                var columnNames = firstRowUsed.Cells().Select(c => c.GetString()).ToArray();
+                if (!columns.All(c => columnNames.Contains(c)))
+                {
+                    ViewBag.Message = "Provided file is missing one or more required columns: Description, Value";
+                    return View("BulkCreate");
+                }
+
+                // Skip header row
+                var rows = worksheet.RowsUsed().Skip(1);
+
+                // Indexes
+                int descriptionIndex = columnNames.ToList().IndexOf("Description") + 1;
+                int valueIndex = columnNames.ToList().IndexOf("Value") + 1;
+
+                // Loop through all the rows now
+                foreach (var row in rows)
+                {
+                    try
+                    {
+                        var description = row.Cell(descriptionIndex).GetString();
+                        var value = row.Cell(valueIndex).GetDouble();
+
+                        if (string.IsNullOrWhiteSpace(description) || value == 0)
+                        {
+                            continue;
+                        }
+
+                        var expense = new Expense
+                        {
+                            Description = description,
+                            Value = (decimal) value,
+                            createdAt = DateTime.Now
+                        };
+                        _context.Expenses.Add(expense);
+                        ++successfulRows;
+                    }
+                    catch (Exception ex)
+                    {
+                        ++failedRows;
+                        _logger.LogError(ex, "Error processing row in bulk upload.");
+                        continue;
+                    }
+                }
+
+                // Save all changes outside of the loop
+                _context.SaveChangesAsync();
+            }
+
+            if (failedRows > 0 && successfulRows == 0)
+            {
+                ViewBag.Message = $"File uploaded successfully, but failed to process rows. Please verify if the template provided is correct.";
+            }
+            else
+            {
+                ViewBag.Message = $"File uploaded successfully. Rows processed: {successfulRows} successfully and {failedRows} failed.";
+            }
+            return View("BulkCreate");
+        }
+
         public IActionResult DeleteExpense(int id)
         {
             var expense = _context.Expenses.Find(id);
@@ -94,6 +211,7 @@ namespace SpendSharp.Controllers
             return RedirectToAction("Expenses");
         }
 
+        [HttpPost]
         public IActionResult CreateEditExpenseForm(Expense data)
         {
             if (data.Id > 0)

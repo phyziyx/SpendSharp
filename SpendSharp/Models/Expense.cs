@@ -11,6 +11,6 @@ namespace SpendSharp.Models
         [Required]
         public string? Description { get; set; } = string.Empty;
 
-        // public DateTime createdAt { get; set; } = DateTime.Now;
+        public DateTime createdAt { get; set; } = DateTime.Now;
     }
 }
